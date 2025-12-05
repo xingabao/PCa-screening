@@ -46,7 +46,7 @@ st.set_page_config(page_title = 'Prostate Cancer Advanced Diagnostic Application
 st.markdown("""
 <style>
     /* Hide Streamlit Header */
-    header[data-testid="stHeader"] { display: none; }
+    /* header[data-testid="stHeader"] { display: none; } */
     
     /* Adjust top margin */
     .stApp { background-color: #f8f9fa; margin-top: -80px; }
@@ -288,8 +288,8 @@ st.markdown('<div class="section-header">1. Traditional Markers (Base)</div>', u
 c1, c2, c3, c4 = st.columns(4)
 
 # TPSA and FPSA are the inputs, Ratio is calculated
-tpsa = c1.number_input('tPSA (µg/L)', 0.0, 1000.0, 8.8, format = '%.1f', help = 'Total Prostate Specific Antigen (tPSA): Reference range 0-4 ng/mL. This is a classic marker for prostate cancer; levels generally increase with the severity of malignant prostate disease.')
-fpsa = c2.number_input('fPSA (µg/L)', 0.0, 1000.0, 1.9, format = '%.1f', help = 'Free Prostate Specific Antigen (fPSA): Reference range 0-0.93 ng/mL. A classic marker for prostate cancer; levels generally increase with malignancy.')
+tpsa = c1.number_input('tPSA (µg/L)', 0.0, 1000.0, 8.81, format = '%.2f', step = 0.01, help = 'Total Prostate Specific Antigen (tPSA): Reference range 0-4 ng/mL. This is a classic marker for prostate cancer; levels generally increase with the severity of malignant prostate disease.')
+fpsa = c2.number_input('fPSA (µg/L)', 0.0, 1000.0, 1.92, format = '%.2f', step = 0.01, help = 'Free Prostate Specific Antigen (fPSA): Reference range 0-0.93 ng/mL. A classic marker for prostate cancer; levels generally increase with malignancy.')
 
 # Calculate Ratio for display
 ratio_val = fpsa / tpsa if tpsa > 0 else 0.0
