@@ -49,7 +49,7 @@ st.markdown("""
     /* header[data-testid="stHeader"] { display: none; } */
     
     /* Adjust top margin */
-    .stApp { background-color: #f8f9fa; margin-top: -80px; }
+    .stApp { background-color: #FFFFFF; margin-top: -80px; }
     
     /* Section Headers */
     .section-header {
