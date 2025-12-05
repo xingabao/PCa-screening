@@ -1,19 +1,47 @@
-import streamlit as st
-import pandas as pd
-import joblib
+# -*- coding: utf-8 -*-
+"""
+Created on Fri Dec  5 12:53:45 2025
+ @author Abao Xing
+ @email  albertxn7@gmail.com
+ This scripts writen by Abao Xing
+
+   ┏┓　　┏┓
+  ┏┛┻━━━━┛┻┓
+  ┃　　　　  ┃
+  ┃　━　　━　 ┃
+  ┃　┳┛　┗┳　 ┃
+  ┃　　　　　 ┃
+  ┃　　　┻　　┃
+  ┃　　　　　 ┃
+  ┗━━┓　　　┏━┛
+  　　┃　　 ┃ 神兽保佑
+  　　┃　　 ┃ 代码无BUG！！！
+  　　┃　　 ┗━━━━━┓
+  　　┃　　　　　　  ┣┓
+ 　　┃　　　　　　  ┏┛┃
+ 　　┗┓┓┏━━━━━┳┓┏━━┛
+  　　┃┫┫　   ┃┫┫
+  　　┗┻┛　   ┗┻┛
+
+"""
+
 import os
+import sys
+import joblib
 import warnings
+import pandas as pd
+import streamlit as st
 
-# --- 0. Suppress Warnings ---
-warnings.filterwarnings("ignore")
-os.environ["PYTHONWARNINGS"] = "ignore"
+# --------------------------------------------------
+# 0. Suppress Warnings
+# --------------------------------------------------
+warnings.filterwarnings('ignore')
+os.environ['PYTHONWARNINGS'] = 'ignore'
 
-# --- 1. Page Configuration ---
-st.set_page_config(
-    page_title="Prostate Cancer Advanced Diagnostic System",
-    page_icon="🧬",
-    layout="wide"
-)
+# --------------------------------------------------
+# 1. Page Configuration
+# --------------------------------------------------
+st.set_page_config(page_title = 'Prostate Cancer Advanced Diagnostic Application', page_icon = '', layout = 'wide')
 
 # Inject Global CSS
 st.markdown("""
@@ -66,17 +94,19 @@ st.markdown("""
         width: 100%; border-radius: 8px; height: 3em; font-weight: bold;
     }
 
-    /* --- FORCE DIALOG WIDTH TO ~800px --- */
+    /* FORCE DIALOG WIDTH TO ~1000px */
     div[data-testid="stDialog"] div[role="dialog"] {
-        width: 800px !important;
+        width: 1000px !important;
         max-width: 90vw !important; 
     }
 </style>
-""", unsafe_allow_html=True)
+""", unsafe_allow_html = True)
 
-# --- 2. Core Logic Class ---
-
+# --------------------------------------------------
+# 2. Core Logic Class
+# --------------------------------------------------
 class HierarchicalClassifier:
+    
     def __init__(self, model_step1, model_step2, preprocessor1, preprocessor2, pca_threshold=0.5):
         self.preprocessor1 = preprocessor1
         self.preprocessor2 = preprocessor2
@@ -88,7 +118,7 @@ class HierarchicalClassifier:
         self.features2 = getattr(model_step2, 'feature_names_in_', None)
         
     def predict_full_detail(self, X):
-        # --- Step 1: Healthy vs Disease ---
+        # Step 1: Healthy vs Disease
         cols1 = self.features1 if self.features1 is not None else X.columns
         X_step1 = X.copy()
         for col in cols1:
@@ -99,72 +129,83 @@ class HierarchicalClassifier:
         
         p_healthy = prob1[0]
         p_disease_total = prob1[1]
+        
         is_disease = p_disease_total > 0.5 
         
-        step2_result = None
-        final_code = 0 # 0:Healthy, 1:BPH, 2:PCa
+        # Step 2: BPH vs PCa
+        cols2 = self.features2 if self.features2 is not None else X.columns
+        X_step2 = X.copy()
+        for col in cols2:
+            if col not in X_step2.columns: X_step2[col] = 0
         
-        # --- Step 2: BPH vs PCa ---
-        p_bph_cond = 0.0
-        p_pca_cond = 0.0
+        X2 = self.preprocessor2.transform(X_step2[cols2])
+        prob2 = self.model_step2.predict_proba(X2)[0]
         
+        p_bph_cond = prob2[0] # P(BPH | Disease)
+        p_pca_cond = prob2[1] # P(PCa | Disease)
+        
+        # Confidence level for Step 2 (between 0 and 1)
+        # If probabilities are 0.5/0.5, confidence is 0; if 0.9/0.1, confidence is 0.8.
+        step2_confidence = abs(p_bph_cond - p_pca_cond)
+        
+        # If Step 1 determines the presence of disease, and Step 2 is highly confident.
+        # (whether confident in BPH or PCa)
+        # We use this confidence level to penalize the probability of being Healthy.
         if is_disease:
-            cols2 = self.features2 if self.features2 is not None else X.columns
-            X_step2 = X.copy()
-            for col in cols2:
-                if col not in X_step2.columns: X_step2[col] = 0
+            # Penalty factor: the higher the confidence in Step 2, the more severely the Healthy probability is reduced.
+            # Example: Step 2 confidence of 0.85 means only 15% of the original Healthy probability is retained.
+            penalty_factor = 1.0 - step2_confidence
             
-            X2 = self.preprocessor2.transform(X_step2[cols2])
-            prob2 = self.model_step2.predict_proba(X2)[0]
+            # An intensity coefficient can also be added, e.g., penalty_factor = 1.0 - (step2_confidence * 0.8)
+            # Here we use the strongest correction directly
+            p_healthy = p_healthy * penalty_factor
             
-            p_bph_cond = prob2[0]
-            p_pca_cond = prob2[1]
-            
-            is_pca = p_pca_cond > self.pca_threshold
-            final_code = 2 if is_pca else 1
-            
-            step2_result = {
-                "probs": prob2,
-                "is_pca": is_pca,
-                "threshold": self.pca_threshold
-            }
+            # Recalculate p_disease_total to keep the sum equal to 1 (after local adjustment)
+            p_disease_total = 1.0 - p_healthy
+
+        # Global probability calculation
+        global_healthy = p_healthy
+        global_bph = p_disease_total * p_bph_cond
+        global_pca = p_disease_total * p_pca_cond
         
-        # Calculate Global Probabilities
-        global_bph = p_disease_total * p_bph_cond if is_disease else 0
-        global_pca = p_disease_total * p_pca_cond if is_disease else 0
-        total = p_healthy + global_bph + global_pca
-        if total == 0: total = 1
-            
-        return {
-            "step1": {"is_disease": is_disease, "probs": prob1},
-            "step2": step2_result,
-            "final_label_code": final_code,
-            "global_probs": {
-                "Healthy": p_healthy / total,
-                "BPH": global_bph / total,
-                "PCa": global_pca / total
-            }
+        # Final normalization
+        total = global_healthy + global_bph + global_pca
+        
+        probs_dict = {
+            'Healthy': global_healthy / total,
+            'BPH': global_bph / total,
+            'PCa': global_pca / total
         }
+        
+        # Determine the final result.
+        is_pca_final = p_pca_cond > self.pca_threshold
+        final_code = 0
+        if is_disease:
+            final_code = 2 if is_pca_final else 1
 
-# --- 3. Model Loading ---
-
-# DEFAULT_PATH = "E:/BaiduSyncdisk/005.Bioinformatics/SCI/005/Manuscript/Scripts/models"
-MODEL1_FILE = "voting_model_model12.joblib"
-MODEL2_FILE = "voting_model_model22.joblib"
+        return {
+            'step1': {'is_disease': is_disease, 'probs': prob1},
+            'step2': {'probs': prob2, 'is_pca': is_pca_final, 'threshold': self.pca_threshold},
+            'final_label_code': final_code,
+            'global_probs': probs_dict
+        }
+    
+# --------------------------------------------------
+# 3. Model Loading
+# --------------------------------------------------
+DEFAULT_PATH = 'E:/BaiduSyncdisk/005.Bioinformatics/SCI/005/Manuscript/PCa-screening/models' if sys.platform.find('win') > -1 else 'model'
+MODEL1_FILE = 'disease_screening.joblib'
+MODEL2_FILE = 'malignancy_differentiation.joblib'
 
 @st.cache_resource
-def load_models():
-    # p1 = os.path.join(DEFAULT_PATH, MODEL1_FILE)
-    # p2 = os.path.join(DEFAULT_PATH, MODEL2_FILE)
-    p1 = MODEL1_FILE
-    p2 = MODEL2_FILE
+def models():
+    
+    p1 = os.path.join(DEFAULT_PATH, MODEL1_FILE)
+    p2 = os.path.join(DEFAULT_PATH, MODEL2_FILE)
     
     if not os.path.exists(p1):
         p1 = MODEL1_FILE
         p2 = MODEL2_FILE
-        
-    # if not os.path.exists(p1):
-    #     return None, f"Model files not found in {DEFAULT_PATH} or current dir."
         
     try:
         b1 = joblib.load(p1)
@@ -172,10 +213,11 @@ def load_models():
         return (b1, b2), None
     except Exception as e:
         return None, str(e)
-
-# --- 4. Help & Documentation Dialog ---
-
-@st.dialog("📘 Model Documentation & User Guide", width="large")
+    
+# --------------------------------------------------
+# 4. Help & Documentation Dialog ---
+# --------------------------------------------------
+@st.dialog('📘 Model Documentation & User Guide', width = 'large')
 def show_help():
     st.markdown("""
     ### 1. Overview
@@ -200,42 +242,38 @@ def show_help():
     *   **Effect:** This activates downstream signaling that upregulates **Androgen Receptor (AR)** expression.
     *   **Result:** This induces pathogenic immunosuppression, promoting tumor progression. The interaction term `APOE*AR⁺TREM2⁺` mathematically captures this non-linear synergistic crosstalk.
 
-    ### 4. Performance Validation
-    The model was validated in a large-scale, multi-center study (N=649) across Guangdong and Anhui provinces:
-    *   **Screening Stage:** Achieved an AUC of **0.983**, significantly outperforming baseline models.
-    *   **Differentiation Stage:** Achieved an AUC of **0.851** (internal) and **0.874** (external validation).
-    *   **Clinical Benefit:** Decision Curve Analysis (DCA) shows superior net benefit across clinically reasonable threshold probabilities, effectively reducing unnecessary biopsies.
-
-    ### 5. How to Use
+    ### 4. How to Use
     1.  **Input Data:** Enter the patient's clinical data in the main form. Ensure units match the labels.
     2.  **Threshold:** Adjust the "PCa Decision Threshold" in the sidebar if needed (Default 0.5). Lowering it increases sensitivity (catches more cancer but maybe more false alarms); raising it increases specificity.
-    3.  **Run:** Click "Run AI Diagnosis".
+    3.  **Run:** Click "🚀 Launch Prediction !".
     4.  **Interpret:** The report provides a global probability and a step-by-step breakdown.
     """)
-
-# --- 5. Sidebar ---
-
+    
+# --------------------------------------------------
+# 5. Sidebar
+# --------------------------------------------------
 with st.sidebar:
-    st.header("⚙️ Control Panel")
+    st.header('⚙️ PCa screening')
     
     # Help Button (Trigger Dialog)
-    if st.button("📘 Help & Documentation"):
+    if st.button('📘 User Guide & Documentation'):
         show_help()
         
-    st.markdown("---")
+    st.markdown('---')
     
-    pca_threshold = st.slider("PCa Decision Threshold", 0.0, 1.0, 0.5, 0.01, help="Adjust sensitivity/specificity trade-off for PCa detection.")
+    pca_threshold = st.slider('PCa Decision Threshold', 0.0, 1.0, 0.5, 0.01, help = 'Adjust sensitivity/specificity trade-off for PCa detection.')
     
-    st.markdown("---")
-    run_btn = st.button("🚀 Run AI Diagnosis", type="primary")
+    st.markdown('---')
+    run_btn = st.button('🚀 Launch Prediction !', type = 'primary')
 
-# --- 6. Main Interface ---
+# --------------------------------------------------
+# 6. Main Interface
+# --------------------------------------------------
+st.title('Prostate Cancer Hierarchical Diagnostic Application')
 
-st.title("🧬 Prostate Cancer Hierarchical Diagnostic System")
-
-bundles, err = load_models()
+bundles, err = models()
 if err:
-    st.error(f"⚠️ Error: {err}")
+    st.error(f'⚠️ Error: {err}')
     st.stop()
 
 classifier = HierarchicalClassifier(
@@ -247,67 +285,64 @@ classifier = HierarchicalClassifier(
 # ==========================================
 #        INPUT FORM AREA
 # ==========================================
+# SECTION 1: Traditional Markers
+st.markdown('<div class="section-header">1. Traditional Markers (Base)</div>', unsafe_allow_html = True)
+c1, c2, c3, c4 = st.columns(4)
 
-# --- SECTION 1: Traditional Markers ---
-st.markdown('<div class="section-header">1. Traditional Markers (Base)</div>', unsafe_allow_html=True)
-c1, c2, c3 = st.columns(3)
 # TPSA and FPSA are the inputs, Ratio is calculated
-tpsa = c1.number_input("tPSA (µg/L)", 0.0, 5000.0, 179.0, format="%.2f")
-fpsa = c2.number_input("fPSA (µg/L)", 0.0, 800.0, 18.6, format="%.2f")
+tpsa = c1.number_input('tPSA (µg/L)', 0.0, 1000.0, 8.8, format = '%.1f', help = 'Total Prostate Specific Antigen (tPSA): Reference range 0-4 ng/mL. This is a classic marker for prostate cancer; levels generally increase with the severity of malignant prostate disease.')
+fpsa = c2.number_input('fPSA (µg/L)', 0.0, 1000.0, 1.9, format = '%.1f', help = 'Free Prostate Specific Antigen (fPSA): Reference range 0-0.93 ng/mL. A classic marker for prostate cancer; levels generally increase with malignancy.')
 
 # Calculate Ratio for display
 ratio_val = fpsa / tpsa if tpsa > 0 else 0.0
-c3.metric("Calculated fPSA/tPSA", f"{ratio_val:.4f}")
+c3.metric('Calculated fPSA/tPSA', f'{ratio_val:.4f}', help = 'Free/Total PSA Ratio: <0.25 indicates high risk of Prostate Cancer (CA); >0.25 indicates high risk of Benign Prostatic Hyperplasia (BPH).')
+c4.write('')
 
-
-# --- SECTION 2: Disease Screening Model ---
-st.markdown('<div class="section-header">2. Disease Screening Model Parameters</div>', unsafe_allow_html=True)
-st.caption("Parameters required for Healthy vs. Disease classification (excluding those already entered above).")
+# SECTION 2: Disease Screening Model
+st.markdown('<div class="section-header">2. Disease Screening Model Parameters</div>', unsafe_allow_html = True)
+st.caption('Parameters required for Healthy vs. Disease classification (excluding those already entered above).')
 
 c1, c2, c3, c4 = st.columns(4)
 # col.model1 includes: TPSA, FPSA/TPSA (Done), plus:
-ly_pct = c1.number_input("LY (%)", 0.0, 100.0, 20.9, format="%.1f")
-hct = c2.number_input("HCT (%)", 10.0, 70.0, 44.0, format="%.1f")
-urea = c3.number_input("Urea (mmol/L)", 0.0, 60.0, 4.03, format="%.2f")
-hgb = c4.number_input("HGB (g/L)", 50.0, 250.0, 143.0, format="%.1f")
+ly_pct = c1.number_input('LY (%)', 0.0, 100.0, 36.6, format = '%.1f', step = 0.1, help = 'Lymphocyte percentage (unit: %), with a reference range of 20.0–50.0, is often observed to be lower in prostatic disease patients compared to healthy controls.')
+hct = c2.number_input('HCT (%)', 0.0, 100.0, 44.0, format = '%.1f', step = 0.1, help = 'Hematocrit. (unit: %), with a reference range of 40.0–50.0. Prostatic disease patients tend to have slightly lower HCT values.')
+urea = c3.number_input('Urea (mmol/L)', 0.0, 100.0, 4.03, format = '%.2f', step = 0.01, help = 'Urea serves as a key indicator of kidney function. The typical reference range is 3.6-9.5 mmol/L. Patients with prostate diseases often exhibit elevated levels.')
+hgb = c4.number_input('HGB (g/L)', 0.0, 1000.0, 143.32, format = '%.2f', step = 0.01, help = 'Hemoglobin (HGB) has a reference range of 130-175 g/L. Patients with prostate disease tend to have lower HGB levels compared to the healthy population.')
 
 c1, c2, c3, c4 = st.columns(4)
-eo_abs = c1.number_input("EO# (*10^9/L)", 0.0, 5.0, 0.29, format="%.2f")
-plt_cnt = c2.number_input("PLT (*10^9/L)", 0.0, 600.0, 313.0, format="%.1f")
-ly_abs = c3.number_input("LY# (*10^9/L)", 0.0, 20.0, 1.7, format="%.2f")
-c4.write("") # Spacer
+ly_abs = c1.number_input('LY# (×10⁹/L)', 0.0, 100.0, 2.63, format = '%.2f', step = 0.01, help = 'Lymphocyte Absolute Count (unit: ×10⁹/L; reference range: 1.10–3.20), is often observed to be lower in prostatic disease patients compared to healthy controls.')
+eo_abs = c2.number_input('EO# (×10⁹/L)', 0.0, 10.0, 0.11, format = '%.2f', step = 0.01, help = 'The Eosinophil Count (EO#) has a reference range of 0.02-0.52 ×10⁹/L. In patients with prostate disease, this indicator may be slightly lower than in the normal healthy population.')
+plt_cnt = c3.number_input('PLT (×10⁹/L)', 0.0, 1000.0, 217.12, format = '%.2f', step = 0.01, help = 'The Platelet Count (PLT) has a reference range of 125-350 ×10⁹/L. This indicator may be slightly lower in patients compared to the normal healthy population.')
+c4.write('')
 
-
-# --- SECTION 3: Malignancy Differentiation Model ---
-st.markdown('<div class="section-header">3. Malignancy Differentiation Model Parameters</div>', unsafe_allow_html=True)
-st.caption("Parameters required for BPH vs. PCa classification. Interaction terms are calculated automatically.")
+# SECTION 3: Malignancy Differentiation Model
+st.markdown('<div class="section-header">3. Malignancy Differentiation Model Parameters</div>', unsafe_allow_html = True)
+st.caption('Parameters required for BPH vs. PCa classification. Enter these values to automatically calculate interaction terms like `APOE*AR+TREM2+` and `AFP*AR+TREM2+`.')
 
 # Basic Clinical for Model 2
 c1, c2, c3, c4 = st.columns(4)
-age = c1.number_input("Age (year)", 20, 100, 65)
-mch = c2.number_input("MCH (pg)", 10.0, 50.0, 30.4, format="%.1f")
-mchc = c3.number_input("MCHC (g/L)", 200.0, 500.0, 325.0, format="%.1f")
-neut_abs = c4.number_input("NEUT# (*10^9/L)", 0.0, 20.0, 5.5, format="%.2f")
+age = c1.number_input('Age (year)', 0, 100, 77, step = 1, help = "Patient's age in years. Generally, the risk of prostate-related diseases increases with age.")
+mch = c2.number_input('MCH (pg)', 0.0, 100.0, 28.70, format = '%.2f', step = 0.01, help = 'Mean Corpuscular Hemoglobin (MCH). Normal Reference Range: 27.0 - 34.0 pg.')
+mchc = c3.number_input('MCHC (g/L)', 0.0, 1000.0, 336.10, format = '%.2f', step = 0.01, help = 'Mean Corpuscular Hemoglobin Concentration (MCHC). Normal Reference Range: 316 - 354 g/L.')
+neut_abs = c4.number_input('NEUT# (×10⁹/L)', 0.0, 100.0, 3.83, format = '%.2f', step = 0.01, help = 'Neutrophil Count (NEUT#). Normal Reference Range: 1.80 - 6.30 ×10⁹/L.')
 
 c1, c2, c3, c4 = st.columns(4)
-mono_pct = c1.number_input("MONO (%)", 0.0, 60.0, 7.4, format="%.1f")
-# AR+TREM2- is a standalone variable in Model 2
-ar_trem2_neg = c2.number_input("AR+TREM2- (%)", 0.0, 100.0, 0.0023, format="%.4f")
-c3.write("")
-c4.write("")
+mono_pct = c1.number_input('MONO (%)', 0.0, 100.0, 8.2, format = '%.1f', step = 0.1, help = 'Monocyte Percentage (MONO%). Normal Reference Range: 3.0 - 10.0 %.')
+ar_trem2_neg = c2.number_input('AR+TREM2- ratio', 0.0, 1.0, 0.133, format = '%.3f', step = 0.001, help = 'AR+TREM2- ratio. Reference Range: 0 - 1.')
+ar_trem2_pos = c3.number_input('AR+TREM2+ ratio', 0.0, 1.0, 0.358, format = '%.3f', step = 0.001, help = 'AR+TREM2+ ratio. Reference Range: 0 - 1.')
+c4.write('')
 
 # Interaction Components
-st.markdown("**Interaction Term Components**")
-st.caption("Enter these values to calculate `APOE*AR+TREM2+` and `AFP*AR+TREM2+`.")
-c1, c2, c3 = st.columns(3)
-apoe = c1.number_input("APOE (mg/L)", 0.0, 2000.0, 890.31, format="%.2f")
-afp = c2.number_input("AFP (µg/L)", 0.0, 500.0, 1.96, format="%.2f")
-ar_trem2_pos = c3.number_input("AR+TREM2+ (%)", 0.0, 100.0, 0.0294, format="%.4f")
+c1, c2, c3, c4 = st.columns(4)
+afp = c1.number_input('AFP (µg/L)', 0.0, 1000.0, 1.63, format = '%.2f', step = 0.01, help = 'Alpha-fetoprotein (AFP) Quantification, with a reference range of 0-7 ng/mL.')
+apoe = c2.number_input('APOE', 0.0, 10000.0, 175.48, format = '%.2f', step = 0.01, help = 'Quantification of APOE expression.')
+c3.write('')
+c4.write('')
 
-
-# --- 7. Result Display Function ---
-
-def get_progress_bar_html(label, prob, color, threshold=None):
+# --------------------------------------------------
+# Result Display Function
+# --------------------------------------------------
+def get_progress_bar_html(label, prob, color, threshold = None):
     pct = prob * 100
     marker = ""
     if threshold is not None:
@@ -326,7 +361,7 @@ def get_progress_bar_html(label, prob, color, threshold=None):
 </div>"""
     return html
 
-@st.dialog("📊 Diagnostic Report", width="large")
+@st.dialog("📊 Diagnostic Report", width = 'large')
 def show_report(res):
     gp = res['global_probs']
     ph, pb, pp = gp['Healthy']*100, gp['BPH']*100, gp['PCa']*100
@@ -346,48 +381,46 @@ def show_report(res):
         </div>
     </div>
     <hr style="margin: 10px 0;">
-    """, unsafe_allow_html=True)
+    """, unsafe_allow_html = True)
 
-    col1, col2 = st.columns(2, gap="medium")
+    col1, col2 = st.columns(2, gap = 'medium')
     
     with col1:
         s1 = res['step1']
         is_dis = s1['is_disease']
         st.markdown(f"""
         <div class="result-card" style="border-left: 5px solid {'#ffc107' if is_dis else '#28a745'}">
-            <div class="card-header">1️⃣ Screening</div>
+            <div class="card-header">1️⃣ Screening <span class="card-sub">(Healthy vs. Disease)</span></div>
             <div style="font-size:1.2rem; font-weight:bold;">{'Risk Detected' if is_dis else 'Healthy'}</div>
-            <div class="card-sub">Healthy vs. Disease</div>
         </div>
-        """, unsafe_allow_html=True)
-        bar_html = get_progress_bar_html("Disease Prob.", s1['probs'][1], "#ffc107" if is_dis else "#28a745")
-        st.markdown(bar_html, unsafe_allow_html=True)
+        """, unsafe_allow_html = True)
+        bar_html = get_progress_bar_html('Disease Prob.', s1['probs'][1], '#ffc107' if is_dis else '#28a745')
+        st.markdown(bar_html, unsafe_allow_html = True)
 
     with col2:
         if is_dis:
             s2 = res['step2']
             is_pca = s2['is_pca']
-            color = "#dc3545" if is_pca else "#fd7e14"
+            color = '#dc3545' if is_pca else '#fd7e14'
             st.markdown(f"""
             <div class="result-card" style="border-left: 5px solid {color}">
-                <div class="card-header">2️⃣ Diagnosis</div>
+                <div class="card-header">2️⃣ Diagnosis <span class="card-sub">(BPH vs. PCa)</span></div>
                 <div style="font-size:1.2rem; font-weight:bold;">{'PCa (Malignant)' if is_pca else 'BPH (Benign)'}</div>
-                <div class="card-sub">BPH vs. PCa</div>
+               
             </div>
-            """, unsafe_allow_html=True)
-            bar_html = get_progress_bar_html("Malignancy Prob.", s2['probs'][1], color, threshold=s2['threshold'])
-            st.markdown(bar_html, unsafe_allow_html=True)
+            """, unsafe_allow_html = True)
+            bar_html = get_progress_bar_html('Malignancy Prob.', s2['probs'][1], color, threshold = s2['threshold'])
+            st.markdown(bar_html, unsafe_allow_html = True)
         else:
             st.markdown("""
-            <div class="result-card" style="border-left: 5px solid #ccc; opacity: 0.6;">
-                <div class="card-header">2️⃣ Diagnosis</div>
+            <div class="result-card" style = "border-left: 5px solid #ccc; opacity: 0.6;">
+                <div class="card-header">2️⃣ Diagnosis <span class="card-sub">(Not required)</span></div>
                 <div style="font-size:1.2rem; font-weight:bold;">Skipped</div>
-                <div class="card-sub">Not required</div>
             </div>
-            """, unsafe_allow_html=True)
+            """, unsafe_allow_html = True)
 
-    # --- Detailed Interpretation Section ---
-    st.write("") 
+    # Detailed Interpretation Section
+    st.write('') 
     final_code = res['final_label_code']
     
     if final_code == 2: # PCa
@@ -397,13 +430,10 @@ def show_report(res):
             <b>🔍 Result Interpretation:</b><br>
             The model has identified a high probability of <b>Prostate Cancer (PCa)</b>. 
             <br><br>
-            <b>Biological Context:</b> This classification is likely driven by elevated levels of the <b>APOE*AR⁺TREM2⁺</b> interaction term. 
-            According to our study, the interaction between APOE and AR⁺TREM2⁺ macrophages creates an immunosuppressive microenvironment that promotes tumor progression. 
-            Unlike BPH, which may show elevated PSA, this specific immunophenotypic signature is highly specific to malignancy.
-            <br><br>
-            <b>🩺 Clinical Recommendation:</b> Immediate consultation with a urologist is recommended. Consider multiparametric MRI or biopsy for confirmation.
+            <b>🩺 Clinical Recommendation:</b><br>
+            Immediate consultation with a urologist is recommended. Consider multiparametric MRI or biopsy for confirmation.
         </div>
-        """, unsafe_allow_html=True)
+        """, unsafe_allow_html = True)
         
     elif final_code == 1: # BPH
         st.warning("🔸 **Observation**: Markers suggest benign enlargement (BPH).")
@@ -412,12 +442,10 @@ def show_report(res):
             <b>🔍 Result Interpretation:</b><br>
             The model predicts <b>Benign Prostatic Hyperplasia (BPH)</b>.
             <br><br>
-            <b>Biological Context:</b> While the screening model detected prostatic pathology (possibly due to elevated PSA or inflammation), the malignancy differentiation model did not find the specific <b>AR⁺TREM2⁺</b> immune signature associated with cancer. 
-            This suggests the condition is likely benign enlargement rather than a malignant tumor.
-            <br><br>
-            <b>🩺 Clinical Recommendation:</b> Regular monitoring of PSA levels and symptoms is advised. Invasive procedures (like biopsy) might be avoidable based on this risk assessment, subject to clinical judgment.
+            <b>🩺 Clinical Recommendation:</b><br>
+            Regular monitoring of PSA levels and symptoms is advised. Invasive procedures (like biopsy) might be avoidable based on this risk assessment, subject to clinical judgment.
         </div>
-        """, unsafe_allow_html=True)
+        """, unsafe_allow_html = True)
         
     else: # Healthy
         st.success("✅ **Low Risk**: No further differential diagnosis needed.")
@@ -426,15 +454,15 @@ def show_report(res):
             <b>🔍 Result Interpretation:</b><br>
             The model predicts the subject is <b>Healthy</b>.
             <br><br>
-            <b>Biological Context:</b> The systemic inflammatory markers (like LY%, HCT) and prostate-specific antigens are within ranges typical for the control group. 
-            The absence of significant deviations in the screening stage indicates a low probability of prostatic pathology.
+            No significant abnormalities were found during the screening phase, indicating a low likehood of prostate disease.
             <br><br>
-            <b>🩺 Clinical Recommendation:</b> Maintain a healthy lifestyle. Routine annual health check-ups are recommended.
+            <b>🩺 Clinical Recommendation:</b><br> Maintain a healthy lifestyle. Routine annual health check-ups are recommended.
         </div>
         """, unsafe_allow_html=True)
 
-# --- 8. Execution Logic ---
-
+# --------------------------------------------------
+# 8. Execution Logic
+# --------------------------------------------------
 if run_btn:
     # Calculate Ratio
     ratio_calc = fpsa / tpsa if tpsa > 0 else 0
@@ -475,5 +503,5 @@ if run_btn:
         result = classifier.predict_full_detail(input_data)
         show_report(result)
     except Exception as e:
-        st.error(f"Prediction Error: {e}")
-        st.write("Debug Info - Input Columns:", input_data.columns.tolist())
+        st.error(f'Prediction Error: {e}')
+        st.write('Debug Info - Input Columns:', input_data.columns.tolist())
