@@ -7,6 +7,6 @@ numpy==2.3.4
 pandas==2.2.3
 scipy==1.16.2
 seaborn==0.13.2
-sklearn
+scikit-learn==1.6.1
 tabpfn==6.0.5
 xgboost==3.0.5
