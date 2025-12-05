@@ -26,7 +26,6 @@ Created on Fri Dec  5 12:53:45 2025
 """
 
 import os
-import sys
 import joblib
 import warnings
 import pandas as pd
@@ -193,18 +192,14 @@ class HierarchicalClassifier:
 # --------------------------------------------------
 # 3. Model Loading
 # --------------------------------------------------
-dev = False
-if dev: DEFAULT_PATH = 'E:/BaiduSyncdisk/005.Bioinformatics/SCI/005/Manuscript/PCa-screening/models'
+DEFAULT_PATH = 'models'
 MODEL1_FILE = 'disease_screening.joblib'
 MODEL2_FILE = 'malignancy_differentiation.joblib'
 
 @st.cache_resource
 def models():
-    
-    p1 = f'models/{MODEL1_FILE}'
-    p2 = f'models/{MODEL2_FILE}'
-    if dev: p1 = os.path.join(DEFAULT_PATH, MODEL1_FILE)
-    if dev: p2 = os.path.join(DEFAULT_PATH, MODEL2_FILE)
+    p1 = os.path.join(DEFAULT_PATH, MODEL1_FILE)
+    p2 = os.path.join(DEFAULT_PATH, MODEL2_FILE)
     
     if not os.path.exists(p1):
         p1 = MODEL1_FILE
