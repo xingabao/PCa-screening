@@ -41,7 +41,7 @@ os.environ['PYTHONWARNINGS'] = 'ignore'
 # --------------------------------------------------
 # 1. Page Configuration
 # --------------------------------------------------
-st.set_page_config(page_title='Prostate Cancer Advanced Diagnostic Application', page_icon='⚕️', layout='wide')
+st.set_page_config(page_title = 'Prostate Cancer Advanced Diagnostic Application', page_icon = '⚕️', layout = 'wide')
 
 # Inject Global CSS
 st.markdown("""
@@ -97,14 +97,14 @@ st.markdown("""
         max-width: 90vw !important; 
     }
 </style>
-""", unsafe_allow_html=True)
+""", unsafe_allow_html = True)
 
 # --------------------------------------------------
 # 2. Core Logic Class
 # --------------------------------------------------
 class HierarchicalClassifier:
     
-    def __init__(self, model_step1, model_step2, preprocessor1, preprocessor2, pca_threshold=0.5):
+    def __init__(self, model_step1, model_step2, preprocessor1, preprocessor2, pca_threshold = 0.5):
         self.preprocessor1 = preprocessor1
         self.preprocessor2 = preprocessor2
         self.model_step1 = model_step1
@@ -205,7 +205,7 @@ def models():
 # --------------------------------------------------
 # 4. Help & Documentation Dialog
 # --------------------------------------------------
-@st.dialog('📘 Model Documentation & User Guide', width='large')
+@st.dialog('📘 Model Documentation & User Guide', width = 'large')
 def show_help():
     st.markdown("""
     ### 1. Overview
@@ -215,7 +215,7 @@ def show_help():
     The model employs a two-stage hierarchical classification strategy:
     
     *   **Stage 1: Disease Screening Model (Healthy vs. Disease)**
-        *   **Top Features:** TPSA, LY%, HCT, RDW-CV, FPSA/TPSA, Urea, HGB, LY#, NEUT#, MONO#, PLT.
+        *   **Top Features:** TPSA, LY%, HCT, RDW-CV, FPSA/TPSA, FPSA, Urea, HGB, LY#, NEUT#, MONO#, PLT.
         *   **Interaction:** `TPSA*AR+TREM2+` is also used in this stage to enhance sensitivity.
     
     *   **Stage 2: Malignancy Differentiation Model (BPH vs. PCa)**
@@ -245,10 +245,10 @@ with st.sidebar:
         
     st.markdown('---')
     
-    pca_threshold = st.slider('PCa Decision Threshold', 0.0, 1.0, 0.5, 0.01, help='Adjust sensitivity/specificity trade-off for PCa detection.')
+    pca_threshold = st.slider('PCa Decision Threshold', 0.0, 1.0, 0.5, 0.01, help = 'Adjust sensitivity/specificity trade-off for PCa detection.')
     
     st.markdown('---')
-    run_btn = st.button('🚀 Launch Prediction !', type='primary')
+    run_btn = st.button('🚀 Launch Prediction !', type = 'primary')
 
 # --------------------------------------------------
 # 6. Main Interface
@@ -269,65 +269,84 @@ classifier = HierarchicalClassifier(
 # ==========================================
 #        INPUT FORM AREA
 # ==========================================
+# Reorganized by Clinical Category to avoid duplicates
 
-# --- SECTION 1: Core Biomarkers (PSA & Age) ---
-st.markdown('<div class="section-header">1. Core Biomarkers</div>', unsafe_allow_html=True)
+# --- SECTION 1: Patient Info & Tumor Markers ---
+st.markdown('<div class="section-header">1. Patient Info & Tumor Markers</div>', unsafe_allow_html = True)
 c1, c2, c3, c4 = st.columns(4)
 
-tpsa = c1.number_input('tPSA (µg/L)', 0.0, 1000.0, 8.81, format='%.2f', step=0.01, help='Total Prostate Specific Antigen.')
-fpsa = c2.number_input('fPSA (µg/L)', 0.0, 1000.0, 1.92, format='%.2f', step=0.01, help='Free Prostate Specific Antigen.')
-age = c3.number_input('Age (year)', 0, 120, 65, step=1, help="Patient's age.")
+# Age (Used in Diagnosis)
+age = c1.number_input('Age (year)', 0, 120, 75, step = 1, help = "Patient's age.")
 
-# Calculate Ratio for display
+# TPSA (Used in Screening & Diagnosis)
+tpsa = c2.number_input('tPSA (µg/L)', 0.0, 1000.0, 1.44, format = '%.2f', step = 0.01, help = 'Total Prostate Specific Antigen.')
+
+# FPSA (Used in Screening, and for Ratio calculation)
+fpsa = c3.number_input('fPSA (µg/L)', 0.0, 1000.0, 0.416, format = '%.3f', step = 0.001, help = 'Free Prostate Specific Antigen.')
+
+# AFP (Used in Diagnosis Interaction)
+afp = c4.number_input('AFP (µg/L)', 0.0, 1000.0, 2.44, format = '%.2f', step = 0.01, help = 'Alpha-fetoprotein.')
+
+# Ratio Calculation Display
 ratio_val = fpsa / tpsa if tpsa > 0 else 0.0
-c4.metric('Calculated fPSA/tPSA', f'{ratio_val:.4f}', help='Free/Total PSA Ratio.')
+# Modified display logic: Larger font and Red color for the number
+st.markdown(f"ℹ️ Calculated fPSA/tPSA Ratio: <span style='color: #FF0000; font-size: 1.3rem; font-weight: bold;'>{ratio_val:.4f}</span> (Used in both models)", unsafe_allow_html = True)
 
-# --- SECTION 2: Blood Routine & Biochemistry (Screening Focus) ---
-st.markdown('<div class="section-header">2. Blood Routine & Biochemistry (Screening)</div>', unsafe_allow_html=True)
-st.caption('Parameters primarily used for Healthy vs. Disease classification.')
-
-c1, c2, c3, c4 = st.columns(4)
-ly_pct = c1.number_input('LY (%)', 0.0, 100.0, 36.6, format='%.1f', step=0.1, help='Lymphocyte percentage.')
-hct = c2.number_input('HCT (%)', 0.0, 100.0, 44.0, format='%.1f', step=0.1, help='Hematocrit.')
-rdw_cv = c3.number_input('RDW-CV (%)', 0.0, 100.0, 13.0, format='%.1f', step=0.1, help='Red Cell Distribution Width-CV. Ref: 11.0-16.0%.')
-urea = c4.number_input('Urea (mmol/L)', 0.0, 100.0, 4.03, format='%.2f', step=0.01, help='Blood Urea Nitrogen.')
+# --- SECTION 2: Complete Blood Count (CBC) ---
+st.markdown('<div class="section-header">2. Complete Blood Count (CBC)</div>', unsafe_allow_html = True)
 
 c1, c2, c3, c4 = st.columns(4)
-hgb = c1.number_input('HGB (g/L)', 0.0, 1000.0, 143.32, format='%.2f', step=0.01, help='Hemoglobin.')
-plt_cnt = c2.number_input('PLT (×10⁹/L)', 0.0, 1000.0, 217.12, format='%.2f', step=0.01, help='Platelet Count.')
-ly_abs = c3.number_input('LY# (×10⁹/L)', 0.0, 100.0, 2.63, format='%.2f', step=0.01, help='Lymphocyte Absolute Count.')
-mono_abs = c4.number_input('MONO# (×10⁹/L)', 0.0, 100.0, 0.45, format='%.2f', step=0.01, help='Monocyte Absolute Count. Ref: 0.12-0.80.')
+# NEUT# (Used in Screening & Diagnosis)
+neut_abs = c1.number_input('NEUT# (×10⁹/L)', 0.0, 1000.0, 4.16, format = '%.2f', step = 0.01, help = 'Neutrophil Absolute Count.')
+
+# LY% (Used in Screening)
+ly_pct = c2.number_input('LY (%)', 0.0, 100.0, 27.7, format = '%.1f', step = 0.1, help = 'Lymphocyte percentage.')
+
+# LY# (Used in Screening)
+ly_abs = c3.number_input('LY# (×10⁹/L)', 0.0, 1000.0, 1.88, format = '%.2f', step = 0.01, help = 'Lymphocyte Absolute Count.')
+
+# MONO# (Used in Screening)
+mono_abs = c4.number_input('MONO# (×10⁹/L)', 0.0, 1000.0, 0.51, format = '%.2f', step = 0.01, help = 'Monocyte Absolute Count.')
 
 c1, c2, c3, c4 = st.columns(4)
-neut_abs = c1.number_input('NEUT# (×10⁹/L)', 0.0, 100.0, 3.83, format='%.2f', step=0.01, help='Neutrophil Absolute Count.')
-# EO# is not in the top 13 of new logs, but keeping it optional or removing if strictly following logs. 
-# The logs don't show EO# in top 13, so we can remove it to declutter, or keep as extra. 
-# Removing EO# based on strict log adherence for "Top Features".
-c2.write('') 
+# HGB (Used in Screening)
+hgb = c1.number_input('HGB (g/L)', 0.0, 1000.0, 96.00, format = '%.2f', step = 0.01, help = 'Hemoglobin.')
+
+# HCT (Used in Screening)
+hct = c2.number_input('HCT (%)', 0.0, 100.0, 29.2, format = '%.1f', step = 0.1, help = 'Hematocrit.')
+
+# PLT (Used in Screening)
+plt_cnt = c3.number_input('PLT (×10⁹/L)', 0.0, 1000.0, 205.00, format = '%.2f', step = 0.01, help = 'Platelet Count.')
+
+# RDW-CV (Used in Screening)
+rdw_cv = c4.number_input('RDW-CV (%)', 0.0, 100.0, 16.1, format = '%.1f', step = 0.1, help = 'Red Cell Distribution Width-CV.')
+
+c1, c2, c3, c4 = st.columns(4)
+# MCH (Used in Diagnosis)
+mch = c1.number_input('MCH (pg)', 0.0, 1000.0, 21.20, format = '%.2f', step = 0.01, help = 'Mean Corpuscular Hemoglobin.')
+
+# MCHC (Used in Diagnosis)
+mchc = c2.number_input('MCHC (g/L)', 0.0, 1000.0, 329.00, format = '%.2f', step = 0.01, help = 'Mean Corpuscular Hemoglobin Concentration.')
 c3.write('')
 c4.write('')
 
-# --- SECTION 3: Advanced Markers (Differentiation Focus) ---
-st.markdown('<div class="section-header">3. Advanced Markers & Interactions (Diagnosis)</div>', unsafe_allow_html=True)
-st.caption('Parameters for BPH vs. PCa classification and interaction term calculation.')
+# --- SECTION 3: Biochemistry & Advanced Markers ---
+st.markdown('<div class="section-header">3. Biochemistry & Advanced Immunophenotyping</div>', unsafe_allow_html = True)
 
-c1, c2, c3, c4 = st.columns(4)
-mch = c1.number_input('MCH (pg)', 0.0, 100.0, 28.70, format='%.2f', step=0.01, help='Mean Corpuscular Hemoglobin.')
-mchc = c2.number_input('MCHC (g/L)', 0.0, 1000.0, 336.10, format='%.2f', step=0.01, help='Mean Corpuscular Hemoglobin Concentration.')
-afp = c3.number_input('AFP (µg/L)', 0.0, 1000.0, 1.63, format='%.2f', step=0.01, help='Alpha-fetoprotein.')
-apoe = c4.number_input('APOE', 0.0, 10000.0, 175.48, format='%.2f', step=0.01, help='Apolipoprotein E expression.')
+c1, c2, c3 = st.columns(3)
+# Urea (Used in Screening)
+urea = c1.number_input('Urea (mmol/L)', 0.0, 1000.0, 7.69, format = '%.2f', step = 0.01, help = 'Blood Urea Nitrogen.')
 
-c1, c2, c3, c4 = st.columns(4)
-ar_trem2_pos = c1.number_input('AR+TREM2+ ratio', 0.0, 1.0, 0.358, format='%.3f', step=0.001, help='Key Ratio: AR+TREM2+ cells. Used to calculate interaction terms.')
-# AR+TREM2- is not in top features of new logs, removing to simplify.
-c2.write('')
-c3.write('')
-c4.write('')
+# APOE (Used in Diagnosis Interaction)
+apoe = c2.number_input('APOE', 0.0, 10000.0, 46.55, format = '%.2f', step = 0.01, help = 'Apolipoprotein E expression.')
+
+# AR+TREM2+ (Used in Interactions for both models)
+ar_trem2_pos = c3.number_input('AR+TREM2+ ratio', 0.0, 1.0, 0.218, format = '%.3f', step = 0.001, help = 'Key Ratio: AR+TREM2+ cells. Used to calculate interaction terms.')
 
 # --------------------------------------------------
 # Result Display Function
 # --------------------------------------------------
-def get_progress_bar_html(label, prob, color, threshold=None):
+def get_progress_bar_html(label, prob, color, threshold = None):
     pct = prob * 100
     marker = ""
     if threshold is not None:
@@ -346,7 +365,7 @@ def get_progress_bar_html(label, prob, color, threshold=None):
 </div>"""
     return html
 
-@st.dialog("📊 Diagnostic Report", width='large')
+@st.dialog("📊 Diagnostic Report", width = 'large')
 def show_report(res):
     gp = res['global_probs']
     ph, pb, pp = gp['Healthy']*100, gp['BPH']*100, gp['PCa']*100
@@ -366,9 +385,9 @@ def show_report(res):
         </div>
     </div>
     <hr style="margin: 10px 0;">
-    """, unsafe_allow_html=True)
+    """, unsafe_allow_html = True)
 
-    col1, col2 = st.columns(2, gap='medium')
+    col1, col2 = st.columns(2, gap = 'medium')
     
     with col1:
         s1 = res['step1']
@@ -378,9 +397,9 @@ def show_report(res):
             <div class="card-header">1️⃣ Screening <span class="card-sub">(Healthy vs. Disease)</span></div>
             <div style="font-size:1.2rem; font-weight:bold;">{'Risk Detected' if is_dis else 'Healthy'}</div>
         </div>
-        """, unsafe_allow_html=True)
+        """, unsafe_allow_html = True)
         bar_html = get_progress_bar_html('Disease Prob.', s1['probs'][1], '#ffc107' if is_dis else '#28a745')
-        st.markdown(bar_html, unsafe_allow_html=True)
+        st.markdown(bar_html, unsafe_allow_html = True)
 
     with col2:
         if is_dis:
@@ -393,16 +412,16 @@ def show_report(res):
                 <div style="font-size:1.2rem; font-weight:bold;">{'PCa (Malignant)' if is_pca else 'BPH (Benign)'}</div>
                
             </div>
-            """, unsafe_allow_html=True)
-            bar_html = get_progress_bar_html('Malignancy Prob.', s2['probs'][1], color, threshold=s2['threshold'])
-            st.markdown(bar_html, unsafe_allow_html=True)
+            """, unsafe_allow_html = True)
+            bar_html = get_progress_bar_html('Malignancy Prob.', s2['probs'][1], color, threshold = s2['threshold'])
+            st.markdown(bar_html, unsafe_allow_html = True)
         else:
             st.markdown("""
             <div class="result-card" style="border-left: 5px solid #ccc; opacity: 0.6;">
                 <div class="card-header">2️⃣ Diagnosis <span class="card-sub">(Not required)</span></div>
                 <div style="font-size:1.2rem; font-weight:bold;">Skipped</div>
             </div>
-            """, unsafe_allow_html=True)
+            """, unsafe_allow_html = True)
 
     # Detailed Interpretation Section
     st.write('') 
@@ -418,7 +437,7 @@ def show_report(res):
             <b>🩺 Clinical Recommendation:</b><br>
             Immediate consultation with a urologist is recommended. Consider multiparametric MRI or biopsy for confirmation.
         </div>
-        """, unsafe_allow_html=True)
+        """, unsafe_allow_html = True)
         
     elif final_code == 1: # BPH
         st.warning("🔸 **Observation**: Markers suggest benign enlargement (BPH).")
@@ -430,7 +449,7 @@ def show_report(res):
             <b>🩺 Clinical Recommendation:</b><br>
             Regular monitoring of PSA levels and symptoms is advised. Invasive procedures (like biopsy) might be avoidable based on this risk assessment, subject to clinical judgment.
         </div>
-        """, unsafe_allow_html=True)
+        """, unsafe_allow_html = True)
         
     else: # Healthy
         st.success("✅ **Low Risk**: No further differential diagnosis needed.")
@@ -443,7 +462,7 @@ def show_report(res):
             <br><br>
             <b>🩺 Clinical Recommendation:</b><br> Maintain a healthy lifestyle. Routine annual health check-ups are recommended.
         </div>
-        """, unsafe_allow_html=True)
+        """, unsafe_allow_html = True)
 
 # --------------------------------------------------
 # 8. Execution Logic
@@ -453,10 +472,6 @@ if run_btn:
     ratio_calc = fpsa / tpsa if tpsa > 0 else 0
     
     # Construct Data with Interactions calculated internally
-    # Based on the logs, we need to ensure all Top Features are present.
-    # Model 1 Top 13: ['TPSA', 'LY%', 'HCT', 'RDW-CV', 'FPSA/TPSA', 'FPSA', 'Urea', 'HGB', 'LY#', 'TPSA*AR+TREM2+', 'NEUT#', 'MONO#', 'PLT']
-    # Model 2 Top 8:  ['TPSA', 'FPSA/TPSA', 'NEUT#', 'MCHC', 'APOE*AR+TREM2+', 'MCH', 'AFP*AR+TREM2+', 'age']
-    
     input_data = pd.DataFrame([{
         # --- Shared / Raw Features ---
         'TPSA': tpsa, 
@@ -467,13 +482,13 @@ if run_btn:
         # --- Blood Routine ---
         'LY%': ly_pct, 
         'HCT': hct, 
-        'RDW-CV': rdw_cv,  # New
+        'RDW-CV': rdw_cv,
         'Urea': urea, 
         'HGB': hgb, 
         'PLT': plt_cnt, 
         'LY#': ly_abs,
         'NEUT#': neut_abs,
-        'MONO#': mono_abs, # New
+        'MONO#': mono_abs,
         
         # --- Advanced ---
         'MCH': mch,
@@ -482,14 +497,11 @@ if run_btn:
         'AFP': afp,
         
         # --- Interaction Terms (Calculated) ---
-        # Note: Logs indicate TPSA*AR+TREM2+ is used in Step 1
         'TPSA*AR+TREM2+': tpsa * ar_trem2_pos,
-        
-        # Note: Logs indicate these are used in Step 2
         'APOE*AR+TREM2+': apoe * ar_trem2_pos,
         'AFP*AR+TREM2+': afp * ar_trem2_pos,
         
-        # Keeping raw AR ratio just in case, though not in top lists
+        # Keeping raw AR ratio just in case
         'AR+TREM2+': ar_trem2_pos
     }])
     
