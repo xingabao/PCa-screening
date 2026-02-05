@@ -276,16 +276,16 @@ st.markdown('<div class="section-header">1. Patient Info & Tumor Markers</div>',
 c1, c2, c3, c4 = st.columns(4)
 
 # Age (Used in Diagnosis)
-age = c1.number_input('Age (year)', 0, 120, 75, step = 1, help = "Patient's age.")
+age = c1.number_input('Age (year)', 0, 120, 76, step = 1, help = "Patient's age.")
 
 # TPSA (Used in Screening & Diagnosis)
-tpsa = c2.number_input('tPSA (µg/L)', 0.0, 1000.0, 1.44, format = '%.2f', step = 0.01, help = 'Total Prostate Specific Antigen.')
+tpsa = c2.number_input('tPSA (µg/L)', 0.0, 1000.0, 7.44, format = '%.2f', step = 0.01, help = 'Total Prostate Specific Antigen.')
 
 # FPSA (Used in Screening, and for Ratio calculation)
-fpsa = c3.number_input('fPSA (µg/L)', 0.0, 1000.0, 0.416, format = '%.3f', step = 0.001, help = 'Free Prostate Specific Antigen.')
+fpsa = c3.number_input('fPSA (µg/L)', 0.0, 1000.0, 2.06, format = '%.3f', step = 0.001, help = 'Free Prostate Specific Antigen.')
 
 # AFP (Used in Diagnosis Interaction)
-afp = c4.number_input('AFP (µg/L)', 0.0, 1000.0, 2.44, format = '%.2f', step = 0.01, help = 'Alpha-fetoprotein.')
+afp = c4.number_input('AFP (µg/L)', 0.0, 1000.0, 2.57, format = '%.2f', step = 0.01, help = 'Alpha-fetoprotein.')
 
 # Ratio Calculation Display
 ratio_val = fpsa / tpsa if tpsa > 0 else 0.0
@@ -297,36 +297,36 @@ st.markdown('<div class="section-header">2. Complete Blood Count (CBC)</div>', u
 
 c1, c2, c3, c4 = st.columns(4)
 # NEUT# (Used in Screening & Diagnosis)
-neut_abs = c1.number_input('NEUT# (×10⁹/L)', 0.0, 1000.0, 4.16, format = '%.2f', step = 0.01, help = 'Neutrophil Absolute Count.')
+neut_abs = c1.number_input('NEUT# (×10⁹/L)', 0.0, 1000.0, 5.62, format = '%.2f', step = 0.01, help = 'Neutrophil Absolute Count.')
 
 # LY% (Used in Screening)
-ly_pct = c2.number_input('LY (%)', 0.0, 100.0, 27.7, format = '%.1f', step = 0.1, help = 'Lymphocyte percentage.')
+ly_pct = c2.number_input('LY (%)', 0.0, 100.0, 17.0, format = '%.1f', step = 0.1, help = 'Lymphocyte percentage.')
 
 # LY# (Used in Screening)
-ly_abs = c3.number_input('LY# (×10⁹/L)', 0.0, 1000.0, 1.88, format = '%.2f', step = 0.01, help = 'Lymphocyte Absolute Count.')
+ly_abs = c3.number_input('LY# (×10⁹/L)', 0.0, 1000.0, 1.28, format = '%.2f', step = 0.01, help = 'Lymphocyte Absolute Count.')
 
 # MONO# (Used in Screening)
-mono_abs = c4.number_input('MONO# (×10⁹/L)', 0.0, 1000.0, 0.51, format = '%.2f', step = 0.01, help = 'Monocyte Absolute Count.')
+mono_abs = c4.number_input('MONO# (×10⁹/L)', 0.0, 1000.0, 0.44, format = '%.2f', step = 0.01, help = 'Monocyte Absolute Count.')
 
 c1, c2, c3, c4 = st.columns(4)
 # HGB (Used in Screening)
-hgb = c1.number_input('HGB (g/L)', 0.0, 1000.0, 96.00, format = '%.2f', step = 0.01, help = 'Hemoglobin.')
+hgb = c1.number_input('HGB (g/L)', 0.0, 1000.0, 143.00, format = '%.2f', step = 0.01, help = 'Hemoglobin.')
 
 # HCT (Used in Screening)
-hct = c2.number_input('HCT (%)', 0.0, 100.0, 29.2, format = '%.1f', step = 0.1, help = 'Hematocrit.')
+hct = c2.number_input('HCT (%)', 0.0, 100.0, 43.7, format = '%.1f', step = 0.1, help = 'Hematocrit.')
 
 # PLT (Used in Screening)
-plt_cnt = c3.number_input('PLT (×10⁹/L)', 0.0, 1000.0, 205.00, format = '%.2f', step = 0.01, help = 'Platelet Count.')
+plt_cnt = c3.number_input('PLT (×10⁹/L)', 0.0, 1000.0, 177.00, format = '%.2f', step = 0.01, help = 'Platelet Count.')
 
 # RDW-CV (Used in Screening)
-rdw_cv = c4.number_input('RDW-CV (%)', 0.0, 100.0, 16.1, format = '%.1f', step = 0.1, help = 'Red Cell Distribution Width-CV.')
+rdw_cv = c4.number_input('RDW-CV (%)', 0.0, 100.0, 13.0, format = '%.1f', step = 0.1, help = 'Red Cell Distribution Width-CV.')
 
 c1, c2, c3, c4 = st.columns(4)
 # MCH (Used in Diagnosis)
-mch = c1.number_input('MCH (pg)', 0.0, 1000.0, 21.20, format = '%.2f', step = 0.01, help = 'Mean Corpuscular Hemoglobin.')
+mch = c1.number_input('MCH (pg)', 0.0, 1000.0, 30.50, format = '%.2f', step = 0.01, help = 'Mean Corpuscular Hemoglobin.')
 
 # MCHC (Used in Diagnosis)
-mchc = c2.number_input('MCHC (g/L)', 0.0, 1000.0, 329.00, format = '%.2f', step = 0.01, help = 'Mean Corpuscular Hemoglobin Concentration.')
+mchc = c2.number_input('MCHC (g/L)', 0.0, 1000.0, 327.00, format = '%.2f', step = 0.01, help = 'Mean Corpuscular Hemoglobin Concentration.')
 c3.write('')
 c4.write('')
 
@@ -335,13 +335,13 @@ st.markdown('<div class="section-header">3. Biochemistry & Advanced Immunophenot
 
 c1, c2, c3 = st.columns(3)
 # Urea (Used in Screening)
-urea = c1.number_input('Urea (mmol/L)', 0.0, 1000.0, 7.69, format = '%.2f', step = 0.01, help = 'Blood Urea Nitrogen.')
+urea = c1.number_input('Urea (mmol/L)', 0.0, 1000.0, 9.90, format = '%.2f', step = 0.01, help = 'Blood Urea Nitrogen.')
 
 # APOE (Used in Diagnosis Interaction)
-apoe = c2.number_input('APOE', 0.0, 10000.0, 46.55, format = '%.2f', step = 0.01, help = 'Apolipoprotein E expression.')
+apoe = c2.number_input('APOE', 0.0, 10000.0, 87.2807625748426, format = '%.2f', step = 0.01, help = 'Apolipoprotein E expression.')
 
 # AR+TREM2+ (Used in Interactions for both models)
-ar_trem2_pos = c3.number_input('AR+TREM2+ ratio', 0.0, 1.0, 0.218, format = '%.3f', step = 0.001, help = 'Key Ratio: AR+TREM2+ cells. Used to calculate interaction terms.')
+ar_trem2_pos = c3.number_input('AR+TREM2+ ratio', 0.0, 1.0, 0.108, format = '%.3f', step = 0.001, help = 'Key Ratio: AR+TREM2+ cells. Used to calculate interaction terms.')
 
 # --------------------------------------------------
 # Result Display Function
