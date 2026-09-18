@@ -50,7 +50,7 @@ The analysis pipeline comprises five phases: (i) study design and data collectio
 
 # System Requirements
 
-The analysis was performed on a Windows 11 personal computer (16 GB RAM; Intel® Core™ i7-7700K processor). The statistical and figure scripts were run in R (version 4.6.0) using the RStudio IDE with R packages `gtsummary` (v2.5.0) and `gt` (v1.3.0); the machine-learning pipeline was implemented in Python (version 3.13.5) using `scikit-learn` (v1.6.1), `lightgbm` (v4.6.0), `xgboost` (v3.0.5), `tabpfn` (v6.0.5), `optuna` (v4.5.0) and `shap` (v0.50.0). The full R session information recorded at runtime is provided in `Outputs/Fig_correlation/sessionInfo.txt`. No non-standard hardware is required. All scripts except `build_model.py` complete within a few minutes; `build_model.py` requires several hours per modelling stream, dominated by hyperparameter optimization, ensemble retraining and SHAP analysis.
+The analysis was performed on a Windows 11 personal computer (16 GB RAM; Intel® Core™ i7-7700K processor). The statistical and figure scripts were run in R (version 4.5.1) using the RStudio IDE with R packages `gtsummary` (v2.5.0) and `gt` (v1.3.0); the machine-learning pipeline was implemented in Python (version 3.13.5) using `scikit-learn` (v1.6.1), `lightgbm` (v4.6.0), `xgboost` (v3.0.5), `tabpfn` (v6.0.5), `optuna` (v4.5.0) and `shap` (v0.50.0). The full R session information recorded at runtime is provided in `Outputs/Fig_correlation/sessionInfo.txt`. No non-standard hardware is required. All scripts except `build_model.py` complete within a few minutes; `build_model.py` requires several hours per modelling stream, dominated by hyperparameter optimization, ensemble retraining and SHAP analysis.
 
 # Computational Resources and Cost
 
