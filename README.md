@@ -6,7 +6,7 @@ This repository includes Python and R code to reproduce all of the analyses for 
 
 The graphical abstract is provided as a high-resolution PDF: [Figures/Graphical Abstract Image.pdf](./Figures/Graphical%20Abstract%20Image.pdf)
 
-![Graphical Abstract Image](E:\BaiduSyncdisk\005.Bioinformatics\SCI\005\PCa-screening\Figures\Graphical Abstract Image.png)
+<img src='Figures\Graphical Abstract Image.png'>
 
 # Overview
 
