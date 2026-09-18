@@ -52,6 +52,24 @@ The analysis pipeline comprises five phases: (i) study design and data collectio
 
 The analysis was performed on a Windows 11 personal computer (16 GB RAM; Intel® Core™ i7-7700K processor). The statistical and figure scripts were run in R (version 4.6.0) using the RStudio IDE with R packages `gtsummary` (v2.5.0) and `gt` (v1.3.0); the machine-learning pipeline was implemented in Python (version 3.13.5) using `scikit-learn` (v1.6.1), `lightgbm` (v4.6.0), `xgboost` (v3.0.5), `tabpfn` (v6.0.5), `optuna` (v4.5.0) and `shap` (v0.50.0). The full R session information recorded at runtime is provided in `Outputs/Fig_correlation/sessionInfo.txt`. No non-standard hardware is required. All scripts except `build_model.py` complete within a few minutes; `build_model.py` requires several hours per modelling stream, dominated by hyperparameter optimization, ensemble retraining and SHAP analysis.
 
+# Computational Resources and Cost
+
+**Hardware.** All analyses were performed on a single desktop workstation running Windows 11, with 16 GB of RAM and CPU-only execution; no GPU was used at any stage (TabPFN was run on CPU, `device = cpu` in the configuration file). Because the largest input matrix is 518 × 66 and all models are shallow tree-based, linear, kernel or multilayer-perceptron classifiers, no step is memory-bound, and 16 GB of RAM is sufficient with margin. Non-standard hardware is not required.
+
+**Parallelization.** The tree-based learners and the Optuna hyperparameter studies are configured with `njobs = -1`, so they use all available CPU cores; the 10-fold cross-validation and the 1000 bootstrap resamples used for the reported confidence intervals are parallelizable by construction and were executed as multi-threaded single processes. Within each modelling stream the 15 candidate algorithms are tuned sequentially, and the four modelling streams themselves were also run one after another, which keeps the peak memory footprint low.
+
+**Measured computation time.** Wall-clock times of the four modelling streams, extracted from the run logs of the analysis that produced the reported results:
+
+| Modelling stream                          | Wall-clock time | Dominant step                                        |
+| ----------------------------------------- | --------------- | ---------------------------------------------------- |
+| `model11` (Stage 1, PSA-derived baseline) | 8 min 47 s      | CatBoost tuning (~1.5 min)                           |
+| `model12` (Stage 1, comprehensive)        | 12 min 04 s     | Optuna tuning (~5.5 min, of which CatBoost ~2.8 min) |
+| `model21` (Stage 2, PSA-derived baseline) | 6 min 34 s      | CatBoost tuning (~1 min)                             |
+| `model22` (Stage 2, comprehensive)        | 7 min 22 s      | CatBoost tuning (~2 min)                             |
+| **Total for the four streams**            | **34 min 47 s** |                                                      |
+
+Within a modelling stream, nearly all of the time is spent on Bayesian hyperparameter optimization. Feature importance ranking and the feature-subset (RFE-style) evaluation complete in under 10 seconds, TabPFN inference takes about 3 seconds, and the SHAP, decision curve and calibration reporting account for the remaining ~2 minutes. The current version of the script additionally computes the learning curve (17 retrainings of the ensemble on stratified subsets), which adds a few minutes per stream and does not change the conclusions above. `hierarchical_model_evaluation.py` and `incremental_value_analysis.py` complete within a few minutes, and the R scripts within seconds to a minute, so a complete reproduction of the reported results requires well under one hour of computation on a single CPU.
+
 # Installation
 
 ## Step 1: Clone the repository
