@@ -1,0 +1,15 @@
+[ENV]
+rtdir = E:/BaiduSyncdisk/005.Bioinformatics/SCI/005/PCa-screening
+otdir = E:/BaiduSyncdisk/005.Bioinformatics/SCI/005/PCa-screening
+ckpt = Z:/TData/big-data/tabpfn-v2.5-classifier-v2.5_default.ckpt
+dtdir = data
+seed = 42
+kfold = 10
+topim = 30
+ntrials = 50
+njobs = -1
+alpha = 0.3
+nbootstraps = 1000
+device = cpu
+eindex = F1 score
+nmodels = 3
